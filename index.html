@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>平方根小テスト（発展版）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 20px;
+      background-color: #f9f9f9;
+    }
+
+    #start-screen, #quiz-screen {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #fff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    }
+
+    h2 {
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+
+    form label {
+      display: block;
+      margin: 15px 0;
+      font-size: 18px;
+      text-align: left;
+    }
+
+    form input, form select {
+      font-size: 16px;
+      padding: 5px;
+      width: 100%;
+      max-width: 300px;
+      margin-top: 5px;
+    }
+
+    #question-text {
+      font-size: 36px;
+      margin-bottom: 10px;
+    }
+
+    #notice-text {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 20px;
+    }
+
+    #answer-input {
+      font-size: 28px;
+      width: 260px;
+      height: 45px;
+      margin: 15px auto;
+      text-align: center;
+      border: 2px solid #ccc;
+      border-radius: 5px;
+    }
+
+    #keypad {
+      margin: 20px auto;
+      max-width: 280px; /* 4列並びに合わせて維持 */
+    }
+
+    #keypad button {
+      width: 60px;
+      height: 45px;
+      margin: 4px;
+      font-size: 18px;
+      border: none;
+      background-color: #e0e0e0;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    #keypad button:hover {
+      background-color: #d0d0d0;
+    }
+
+    /* 小数点とスラッシュのボタンを目立たせる */
+    #keypad button.symbol-btn {
+      background-color: #cfd8dc;
+    }
+    #keypad button.symbol-btn:hover {
+      background-color: #b0bec5;
+    }
+
+    .button-group {
+      margin-top: 20px;
+    }
+
+    .button-group button {
+      padding: 10px 25px;
+      font-size: 18px;
+      margin: 0 10px;
+      border: none;
+      background-color: #4CAF50;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .button-group button:hover {
+      background-color: #45a049;
+    }
+
+    #timer {
+      position: absolute;
+      top: 10px;
+      right: 20px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #d32f2f;
+    }
+
+    #quiz-screen {
+      position: relative;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<div id="start-screen">
+  <h2>平方根小テスト（発展版）</h2>
+  <form id="user-form">
+    <label for="name">名前</label>
+    <input type="text" id="name" required>
+
+    <label for="grade">学年</label>
+    <input type="text" id="grade" required>
+
+    <label for="number">出席番号</label>
+    <select id="number" required>
+      <option value="">選択してください</option>
+    </select>
+
+    <div class="button-group">
+      <button type="submit">開始</button>
+    </div>
+  </form>
+</div>
+
+<div id="quiz-screen">
+  <div id="timer"></div>
+
+  <div id="question-text"></div>
+  <div id="notice-text">※分数は「2/3」のように入力してください。</div>
+
+  <input type="text" id="answer-input" readonly>
+
+  <div id="keypad">
+    <button type="button" onclick="insertSymbol('1')">1</button>
+    <button type="button" onclick="insertSymbol('2')">2</button>
+    <button type="button" onclick="insertSymbol('3')">3</button>
+    <button type="button" onclick="insertSymbol('4')">4</button>
+    <button type="button" onclick="insertSymbol('5')">5</button>
+    <button type="button" onclick="insertSymbol('6')">6</button>
+    <button type="button" onclick="insertSymbol('7')">7</button>
+    <button type="button" onclick="insertSymbol('8')">8</button>
+    <button type="button" onclick="insertSymbol('9')">9</button>
+    <button type="button" onclick="insertSymbol('0')">0</button>
+    <button type="button" class="symbol-btn" onclick="insertSymbol('.')">.</button>
+    <button type="button" class="symbol-btn" onclick="insertSymbol('/')">/</button>
+    <button type="button" onclick="clearInput()">C</button>
+    <button type="button" onclick="backspace()">←</button>
+  </div>
+
+  <div class="button-group">
+    <button type="button" id="back-button">前へ</button>
+    <button type="button" id="next-button">次へ</button>
+  </div>
+</div>
+
+<script>
+  // --- 💡 【変更箇所②】バラエティ豊かな問題プールを自動生成 ---
+  const allQuestions = [];
+
+  // 1. 整数（1〜30の2乗 → 最大900までカバー）
+  for (let i = 1; i <= 30; i++) {
+    allQuestions.push({
+      question: `\\sqrt{${i * i}}`,
+      answer: i.toString()
+    });
+  }
+
+  // 2. 小数（0.1〜1.5の2乗 ※整数になる1.0は除外）
+  for (let i = 1; i <= 15; i++) {
+    if (i === 10) continue; 
+    const ansVal = i / 10;
+    const squareVal = (ansVal * ansVal).toFixed(4) * 1; // 浮動小数点の誤差対策
+    allQuestions.push({
+      question: `\\sqrt{${squareVal}}`,
+      answer: ansVal.toString()
+    });
+  }
+
+  // 3. 分数（分母・分子が1〜10の2乗になる既約分数）
+  function getGCD(a, b) {
+    return b === 0 ? a : getGCD(b, a % b);
+  }
+  for (let d = 2; d <= 10; d++) { // 分母
+    for (let n = 1; n < d; n++) { // 分子（真分数）
+      if (getGCD(n, d) === 1) {   // 既約分数のみ
+        allQuestions.push({
+          question: `\\sqrt{\\frac{${n * n}}{${d * d}}}`,
+          answer: `${n}/${d}`
+        });
+      }
+    }
+  }
+
+  // 配列をシャッフルして10問抽出する関数
+  function shuffleAndPick(array, num) {
+    const shuffled = [...array].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, num);
+  }
+
+  // ランダムに選ばれた10問を今回のテストにセット
+  const quizData = shuffleAndPick(allQuestions, 10);
+  // -----------------------------------------------------------------
+
+  // 💡 GASのURL（ご自身のURLに置き換えてください）
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbx35nxBqxYsOD33tCJdXsJttrI1xQvptQkiD38KdXKidcOxqCOeN9Z8GYwHHZoh-P0s7A/exec';
+
+  let currentQuestionIndex = 0;
+  let answers = Array(quizData.length).fill("");
+  let timerInterval;
+  let remainingTime = 60 * 3; // 3分
+
+  let savedUserInfo = {
+    name: "",
+    grade: "",
+    number: ""
+  };
+
+  // 出席番号（1〜11）を動的に生成
+  window.addEventListener('DOMContentLoaded', () => {
+    const numberSelect = document.getElementById('number');
+    if (numberSelect) {
+      for (let i = 1; i <= 11; i++) {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = i;
+        numberSelect.appendChild(opt);
+      }
+    }
+  });
+
+  // 開始処理
+  document.getElementById('user-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    const nameEl = document.getElementById('name');
+    const gradeEl = document.getElementById('grade');
+    const numberEl = document.getElementById('number');
+
+    savedUserInfo.name = nameEl.value.trim();
+    savedUserInfo.grade = gradeEl.value.trim();
+    savedUserInfo.number = numberEl.value;
+
+    document.getElementById('start-screen').style.display = 'none';
+    document.getElementById('quiz-screen').style.display = 'block';
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    startTimer();
+    showQuestion();
+  });
+
+  // 問題表示部分
+  function showQuestion() {
+    const q = quizData[currentQuestionIndex];
+    document.getElementById('question-text').innerHTML = `(${currentQuestionIndex + 1}/${quizData.length}) \\(${q.question}\\) =`;
+    document.getElementById('answer-input').value = answers[currentQuestionIndex] || '';
+    document.getElementById('back-button').style.display = currentQuestionIndex > 0 ? 'inline-block' : 'none';
+    
+    const nextBtn = document.getElementById('next-button');
+    if (currentQuestionIndex === quizData.length - 1) {
+      nextBtn.textContent = "送信する";
+      nextBtn.style.backgroundColor = "#d32f2f";
+    } else {
+      nextBtn.textContent = "次へ";
+      nextBtn.style.backgroundColor = "#4CAF50";
+    }
+
+    if (window.MathJax) MathJax.typesetPromise();
+  }
+
+  // 「次へ」または「送信」ボタン
+  document.getElementById('next-button').addEventListener('click', () => {
+    const input = document.getElementById('answer-input').value.trim();
+    answers[currentQuestionIndex] = input;
+
+    if (currentQuestionIndex === quizData.length - 1) {
+      confirmSubmit();
+    } else {
+      currentQuestionIndex++;
+      showQuestion();
+    }
+  });
+
+  // 「前へ」ボタン
+  document.getElementById('back-button').addEventListener('click', () => {
+    const input = document.getElementById('answer-input').value.trim();
+    answers[currentQuestionIndex] = input;
+    currentQuestionIndex--;
+    showQuestion();
+  });
+
+  // Enterキーでの進行
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('next-button').click();
+    }
+  });
+
+  function insertSymbol(sym) {
+    const input = document.getElementById('answer-input');
+    input.value += sym;
+  }
+
+  function backspace() {
+    const input = document.getElementById('answer-input');
+    input.value = input.value.slice(0, -1);
+  }
+
+  function clearInput() {
+    document.getElementById('answer-input').value = '';
+  }
+
+  function handleVisibilityChange() {
+    if (document.visibilityState === 'hidden') {
+      alert("【警告】テスト画面から離れないでください。");
+    }
+  }
+
+  function startTimer() {
+    updateTimerDisplay();
+    timerInterval = setInterval(() => {
+      remainingTime--;
+      updateTimerDisplay();
+      if (remainingTime <= 0) {
+        clearInterval(timerInterval);
+        alert("制限時間になりました。自動的に解答を送信します。");
+        submitAnswers();
+      }
+    }, 1000);
+  }
+
+  function updateTimerDisplay() {
+    const min = Math.floor(remainingTime / 60);
+    const sec = remainingTime % 60;
+    document.getElementById('timer').textContent = `残り時間: ${min}:${sec.toString().padStart(2, '0')}`;
+  }
+
+  function confirmSubmit() {
+    const unansweredCount = answers.filter(a => a === "").length;
+    let msg = "解答を送信しますか？";
+    if (unansweredCount > 0) {
+      msg = `未入力の問題が ${unansweredCount} 問あります。\n本当に送信しますか？`;
+    }
+    if (confirm(msg)) {
+      submitAnswers();
+    }
+  }
+
+  async function submitAnswers() {
+    clearInterval(timerInterval);
+    document.getElementById('next-button').disabled = true;
+    document.getElementById('back-button').disabled = true;
+
+    const name = encodeURIComponent(savedUserInfo.name);
+    const grade = encodeURIComponent(savedUserInfo.grade);
+    const className = encodeURIComponent(""); 
+    const number = encodeURIComponent(savedUserInfo.number);
+    const answersStr = encodeURIComponent(answers.join(','));
+
+    const score = quizData.reduce((acc, q, i) => acc + (answers[i] === q.answer ? 1 : 0), 0);
+
+    const incorrect = quizData
+      .map((q, i) => answers[i] !== q.answer ? `${q.question}=${answers[i] || "未入力"}（正:${q.answer}）` : null)
+      .filter(Boolean)
+      .join('; ');
+    const reason = encodeURIComponent(incorrect);
+
+    const url = `${GAS_URL}?name=${name}&grade=${grade}&className=${className}&number=${number}&answers=${answersStr}&score=${score}&reason=${reason}`;
+
+    let success = false;
+    for (let i = 0; i < 3; i++) {
+      try {
+        await fetch(url, { method: 'GET', mode: 'no-cors' });
+        success = true;
+        break;
+      } catch (err) {
+        console.warn(`送信リトライ ${i + 1} 回目失敗`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    if (!success) {
+      alert("送信に失敗しました。通信環境を確認してください。");
+      return;
+    }
+
+    alert(`${quizData.length}問中${score}問正解でした。\n\n【間違い】\n${incorrect || "なし"}`);
+    location.reload();
+  }
+</script>
+</body>
+</html>
