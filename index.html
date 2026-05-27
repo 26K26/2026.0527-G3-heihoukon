@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>平方根(根号有→無)小テスト</title>
+  <title>平方根総合小テスト</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
   <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
@@ -38,10 +38,11 @@
 
     form input, form select {
       font-size: 16px;
-      padding: 5px;
+      padding: 8px;
       width: 100%;
-      max-width: 300px;
+      max-width: 350px;
       margin-top: 5px;
+      box-sizing: border-box;
     }
 
     #question-text {
@@ -50,9 +51,14 @@
     }
 
     #notice-text {
-      font-size: 14px;
-      color: #666;
+      font-size: 16px;
+      color: #e65100;
+      font-weight: bold;
       margin-bottom: 20px;
+      background-color: #fff3e0;
+      padding: 8px;
+      border-radius: 5px;
+      display: inline-block;
     }
 
     #answer-input {
@@ -67,7 +73,7 @@
 
     #keypad {
       margin: 20px auto;
-      max-width: 280px; /* 4列並びに合わせて維持 */
+      max-width: 280px;
     }
 
     #keypad button {
@@ -86,9 +92,9 @@
       background-color: #d0d0d0;
     }
 
-    /* 小数点とスラッシュのボタンを目立たせる */
     #keypad button.symbol-btn {
       background-color: #cfd8dc;
+      font-weight: bold;
     }
     #keypad button.symbol-btn:hover {
       background-color: #b0bec5;
@@ -131,7 +137,7 @@
 <body>
 
 <div id="start-screen">
-  <h2>平方根小テスト（発展版）</h2>
+  <h2>平方根総合小テスト</h2>
   <form id="user-form">
     <label for="name">名前</label>
     <input type="text" id="name" required>
@@ -144,6 +150,13 @@
       <option value="">選択してください</option>
     </select>
 
+    <label for="quiz-mode">出題モード</label>
+    <select id="quiz-mode" required>
+      <option value="value">1. 平方根の値を求める（整数・小数・分数）</option>
+      <option value="simplify">2. a√b の形に変形する（例：√12 → 2√3）</option>
+      <option value="expand">3. √c の形に変形する（例：2√3 → √12）</option>
+    </select>
+
     <div class="button-group">
       <button type="submit">開始</button>
     </div>
@@ -154,7 +167,7 @@
   <div id="timer"></div>
 
   <div id="question-text"></div>
-  <div id="notice-text">※分数は「2/3」のように入力してください。</div>
+  <div id="notice-text"></div>
 
   <input type="text" id="answer-input" readonly>
 
@@ -169,6 +182,7 @@
     <button type="button" onclick="insertSymbol('8')">8</button>
     <button type="button" onclick="insertSymbol('9')">9</button>
     <button type="button" onclick="insertSymbol('0')">0</button>
+    <button type="button" class="symbol-btn" onclick="insertSymbol('√')">√</button>
     <button type="button" class="symbol-btn" onclick="insertSymbol('.')">.</button>
     <button type="button" class="symbol-btn" onclick="insertSymbol('/')">/</button>
     <button type="button" onclick="clearInput()">C</button>
@@ -182,58 +196,12 @@
 </div>
 
 <script>
-  // --- 💡 【変更箇所②】バラエティ豊かな問題プールを自動生成 ---
-  const allQuestions = [];
-
-  // 1. 整数（1〜30の2乗 → 最大900までカバー）
-  for (let i = 1; i <= 30; i++) {
-    allQuestions.push({
-      question: `\\sqrt{${i * i}}`,
-      answer: i.toString()
-    });
-  }
-
-  // 2. 小数（0.1〜1.5の2乗 ※整数になる1.0は除外）
-  for (let i = 1; i <= 15; i++) {
-    if (i === 10) continue; 
-    const ansVal = i / 10;
-    const squareVal = (ansVal * ansVal).toFixed(4) * 1; // 浮動小数点の誤差対策
-    allQuestions.push({
-      question: `\\sqrt{${squareVal}}`,
-      answer: ansVal.toString()
-    });
-  }
-
-  // 3. 分数（分母・分子が1〜10の2乗になる既約分数）
-  function getGCD(a, b) {
-    return b === 0 ? a : getGCD(b, a % b);
-  }
-  for (let d = 2; d <= 10; d++) { // 分母
-    for (let n = 1; n < d; n++) { // 分子（真分数）
-      if (getGCD(n, d) === 1) {   // 既約分数のみ
-        allQuestions.push({
-          question: `\\sqrt{\\frac{${n * n}}{${d * d}}}`,
-          answer: `${n}/${d}`
-        });
-      }
-    }
-  }
-
-  // 配列をシャッフルして10問抽出する関数
-  function shuffleAndPick(array, num) {
-    const shuffled = [...array].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, num);
-  }
-
-  // ランダムに選ばれた10問を今回のテストにセット
-  const quizData = shuffleAndPick(allQuestions, 10);
-  // -----------------------------------------------------------------
-
   // 💡 GASのURL（ご自身のURLに置き換えてください）
   const GAS_URL = 'https://script.google.com/macros/s/AKfycbx35nxBqxYsOD33tCJdXsJttrI1xQvptQkiD38KdXKidcOxqCOeN9Z8GYwHHZoh-P0s7A/exec';
 
+  let quizData = []; // 開始時に選択されたモードに応じて生成
   let currentQuestionIndex = 0;
-  let answers = Array(quizData.length).fill("");
+  let answers = [];
   let timerInterval;
   let remainingTime = 60 * 3; // 3分
 
@@ -256,6 +224,69 @@
     }
   });
 
+  // 配列をシャッフルして指定数抽出する共通関数
+  function shuffleAndPick(array, num) {
+    const shuffled = [...array].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, num);
+  }
+
+  // 最大公約数を求める（分数用）
+  function getGCD(a, b) {
+    return b === 0 ? a : getGCD(b, a % b);
+  }
+
+  // --- 💡 【変更箇所②】モード選択に応じて問題プールを生成する関数 ---
+  function generateQuestions(mode) {
+    const pool = [];
+
+    if (mode === "value") {
+      // パターン1: 平方根の値を求める（整数・小数・分数）
+      // 整数 (1〜30の2乗)
+      for (let i = 1; i <= 30; i++) {
+        pool.push({ question: `\\sqrt{${i * i}}`, answer: i.toString(), notice: "値を求めなさい" });
+      }
+      // 小数 (0.1〜1.5の2乗)
+      for (let i = 1; i <= 15; i++) {
+        if (i === 10) continue;
+        const ansVal = i / 10;
+        const squareVal = (ansVal * ansVal).toFixed(4) * 1;
+        pool.push({ question: `\\sqrt{${squareVal}}`, answer: ansVal.toString(), notice: "値を求めなさい" });
+      }
+      // 分数
+      for (let d = 2; d <= 10; d++) {
+        for (let n = 1; n < d; n++) {
+          if (getGCD(n, d) === 1) {
+            pool.push({ question: `\\sqrt{\\frac{${n * n}}{${d * d}}}`, answer: `${n}/${d}`, notice: "分数は「2/3」のように入力しなさい" });
+          }
+        }
+      }
+    } 
+    else if (mode === "simplify") {
+      // パターン2: a√b に変形する問題
+      const bCandidates = [2, 3, 5, 6, 7, 10, 11, 13, 14, 15];
+      for (let a = 2; a <= 9; a++) {
+        for (const b of bCandidates) {
+          const inside = a * a * b;
+          if (inside > 200) continue;
+          pool.push({ question: `\\sqrt{${inside}}`, answer: `${a}√${b}`, notice: "a√b の形で答えなさい（例：2√3）" });
+        }
+      }
+    } 
+    else if (mode === "expand") {
+      // パターン3: √c に変形する問題
+      const bCandidates = [2, 3, 5, 6, 7, 10, 11, 13, 14, 15];
+      for (let a = 2; a <= 9; a++) {
+        for (const b of bCandidates) {
+          const inside = a * a * b;
+          if (inside > 200) continue;
+          pool.push({ question: `${a}\\sqrt{${b}}`, answer: `√${inside}`, notice: "√c の形で答えなさい（例：√12）" });
+        }
+      }
+    }
+
+    return shuffleAndPick(pool, 10); // 選択されたプールからランダムに10問抽出
+  }
+
   // 開始処理
   document.getElementById('user-form').addEventListener('submit', function (e) {
     e.preventDefault();
@@ -263,10 +294,15 @@
     const nameEl = document.getElementById('name');
     const gradeEl = document.getElementById('grade');
     const numberEl = document.getElementById('number');
+    const modeEl = document.getElementById('quiz-mode');
 
     savedUserInfo.name = nameEl.value.trim();
     savedUserInfo.grade = gradeEl.value.trim();
     savedUserInfo.number = numberEl.value;
+
+    // 💡 選択されたモードで問題をその場で10問生成し、解答欄を初期化
+    quizData = generateQuestions(modeEl.value);
+    answers = Array(quizData.length).fill("");
 
     document.getElementById('start-screen').style.display = 'none';
     document.getElementById('quiz-screen').style.display = 'block';
@@ -279,6 +315,7 @@
   function showQuestion() {
     const q = quizData[currentQuestionIndex];
     document.getElementById('question-text').innerHTML = `(${currentQuestionIndex + 1}/${quizData.length}) \\(${q.question}\\) =`;
+    document.getElementById('notice-text').textContent = q.notice;
     document.getElementById('answer-input').value = answers[currentQuestionIndex] || '';
     document.getElementById('back-button').style.display = currentQuestionIndex > 0 ? 'inline-block' : 'none';
     
